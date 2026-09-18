@@ -7,8 +7,16 @@ on:
 
 jobs:
   build:
-    # 必须是 macOS runner —— iOS 应用只能在 macOS 上编译，这是苹果的硬性限制
-    runs-on: macos-15
+    # 必须是 macOS runner —— iOS 应用只能在 macOS 上编译，这是苹果的硬性限制。
+    #
+    # 为什么指定 macos-26 而不是 macos-15：
+    #   AlarmKit（本项目的核心能力）随 iOS 26 SDK 发布，只存在于 Xcode 26+。
+    #   macos-15 镜像的默认 Xcode 是 16.4，SDK 里没有 AlarmKit.framework，
+    #   代码会静默降级成普通通知（静音时不响）—— 编译能过，但产物是残废的。
+    #   macos-26 镜像默认自带 Xcode 26.4.1，AlarmKit 完整可用。
+    #
+    # 额度提示：公开仓库的 macOS runner 完全免费；私有仓库按 10 倍系数扣额度。
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v4
@@ -18,10 +26,32 @@ jobs:
 
       - name: 选用最新版 Xcode
         run: |
-          LATEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          # 优先挑 Xcode 26 系（AlarmKit 需要它），挑不到再退回通用匹配
+          LATEST=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          fi
           echo "使用 $LATEST"
           sudo xcode-select -s "$LATEST"
           xcodebuild -version
+
+      # 这一步很关键：AlarmKit 是 iOS 26 才有的框架。
+      # 如果 runner 的 Xcode 太旧，SDK 里就没有 AlarmKit.framework，
+      # 代码里的 `#if canImport(AlarmKit)` 会静默降级成通知模式 ——
+      # 编译照样成功，但产物是功能缩水版。所以要显式报告出来。
+      - name: 检查 AlarmKit 可用性
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || echo "")
+          echo "iOS SDK 路径: $SDK"
+          XCODE_VER=$(xcodebuild -version | head -1 | awk '{print $2}')
+          echo "Xcode 版本: $XCODE_VER"
+          if [ -n "$SDK" ] && [ -d "$SDK/System/Library/Frameworks/AlarmKit.framework" ]; then
+            echo "✅ AlarmKit 可用 —— 将编译出完整的系统级闹钟能力（穿透静音/专注模式）"
+          else
+            echo "::warning title=AlarmKit 不可用::runner 的 Xcode $XCODE_VER 缺少 AlarmKit.framework，产物将自动降级为通知模式（iOS 16~25 行为，静音时不响）"
+          fi
+          echo "--- SDK 版本 ---"
+          xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || true
 
       - name: 编译（关闭签名）
         run: |
