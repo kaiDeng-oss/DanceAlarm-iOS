@@ -53,13 +53,16 @@ jobs:
           echo "--- SDK 版本 ---"
           xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || true
 
+      # 注意：这里必须用 -scheme 而不是 -target。
+      # xcodebuild 明确禁止 -derivedDataPath 与 -target 同时出现，
+      # 会报 "The flag -scheme ... is required when specifying -derivedDataPath"。
       - name: 编译（关闭签名）
         run: |
           xcodebuild \
             -project DanceAlarm.xcodeproj \
-            -target DanceAlarm \
+            -scheme DanceAlarm \
             -configuration Release \
-            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
