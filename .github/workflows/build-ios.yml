@@ -1,0 +1,50 @@
+name: 构建 iOS 应用（未签名 ipa）
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    # 必须是 macOS runner —— iOS 应用只能在 macOS 上编译，这是苹果的硬性限制
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 列出 runner 上可用的 Xcode
+        run: ls -d /Applications/Xcode*.app 2>/dev/null || true
+
+      - name: 选用最新版 Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "使用 $LATEST"
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: 编译（关闭签名）
+        run: |
+          xcodebuild \
+            -project DanceAlarm.xcodeproj \
+            -target DanceAlarm \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: 打包为未签名 ipa
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/DanceAlarm.app Payload/
+          zip -qry DanceAlarm-unsigned.ipa Payload
+          ls -lh DanceAlarm-unsigned.ipa
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: DanceAlarm-unsigned-ipa
+          path: DanceAlarm-unsigned.ipa
