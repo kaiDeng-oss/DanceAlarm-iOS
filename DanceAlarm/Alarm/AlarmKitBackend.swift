@@ -13,10 +13,15 @@ import SwiftUI
 /// 直接写 `Alarm.Schedule` 会被解析成 `DanceAlarm.Alarm`，编译器报：
 ///   "'Schedule' is not a member type of struct 'DanceAlarm.Alarm'"
 /// 所以凡是要引用系统闹钟类型的地方，必须走 `AlarmKit.Alarm` 全限定名。这里起个别名减少噪音。
+/// 必须带 `@available`：`AlarmKit.Alarm` 本身只在 iOS 26+ 可用，
+/// 而本工程的部署目标是 iOS 16 —— 少这一行编译器会直接报
+/// "'Alarm' is only available in iOS 26.0 or newer"。
+@available(iOS 26.0, *)
 private typealias SystemAlarm = AlarmKit.Alarm
 
 /// 传给闹钟的附加数据。AlarmMetadata 要求 Decodable / Encodable / Hashable / Sendable，
 /// 由编译器自动合成。
+@available(iOS 26.0, *)
 struct DanceAlarmMetadata: AlarmMetadata {
     var alarmID: String
     var danceSeconds: Int
