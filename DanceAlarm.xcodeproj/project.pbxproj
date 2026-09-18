@@ -250,6 +250,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "跳舞闹钟";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "跳舞闹钟需要系统闹钟权限：只有获得授权，闹钟才能准时响起，并在手机静音或开启专注模式时依然叫醒你。";
 				INFOPLIST_KEY_NSCameraUsageDescription = "需要使用前置摄像头识别你的动作，确认你确实在跳舞，才允许关闭闹钟。画面只在手机本地实时处理，不会上传，也不会保存。";
@@ -280,6 +281,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "跳舞闹钟";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "跳舞闹钟需要系统闹钟权限：只有获得授权，闹钟才能准时响起，并在手机静音或开启专注模式时依然叫醒你。";
 				INFOPLIST_KEY_NSCameraUsageDescription = "需要使用前置摄像头识别你的动作，确认你确实在跳舞，才允许关闭闹钟。画面只在手机本地实时处理，不会上传，也不会保存。";

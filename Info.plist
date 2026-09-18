@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ============================================================
+	     为什么要单独放一个 Info.plist：
+	     Xcode 的 INFOPLIST_KEY_XXX 构建设置只对它在白名单里认识的键生效。
+	     NSAlarmKitUsageDescription 是 iOS 26 才新增的键，当前 Xcode
+	     尚未收录，所以写在 pbxproj 里会被静默忽略 ——
+	     实测生成的 Info.plist 中该键确实缺失。
+	     后果很严重：缺这个键 AlarmKit 无法申请授权，闹钟根本排不进去。
+
+	     本文件通过 INFOPLIST_FILE 构建设置引入，与
+	     GENERATE_INFOPLIST_FILE 自动生成的键合并。
+	     ============================================================ -->
+
+	<key>NSAlarmKitUsageDescription</key>
+	<string>跳舞闹钟需要系统闹钟权限：只有获得授权，闹钟才能准时响起，并在手机静音或开启专注模式时依然叫醒你。</string>
+
+	<key>NSCameraUsageDescription</key>
+	<string>需要使用前置摄像头识别你的动作，确认你确实在跳舞，才允许关闭闹钟。画面只在手机本地实时处理，不会上传，也不会保存。</string>
+
+	<!-- 后台播放告警音：响铃时即使切到后台也要持续出声 -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+</dict>
+</plist>
