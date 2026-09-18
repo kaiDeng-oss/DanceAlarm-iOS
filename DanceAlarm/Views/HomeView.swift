@@ -85,7 +85,7 @@ struct HomeView: View {
                             } else {
                                 await scheduler.cancel(updated)
                             }
-                            await scheduler.cancelSnoozeAsync(for: updated)
+                            await scheduler.cancelSnoozeAndWait(for: updated)
                         }
                         editing = nil
                     },

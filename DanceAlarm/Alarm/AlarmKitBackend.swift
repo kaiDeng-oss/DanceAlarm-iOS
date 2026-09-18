@@ -9,6 +9,12 @@ import AlarmKit
 import AppIntents
 import SwiftUI
 
+/// 本项目自己有一个 `Alarm` 模型（Models/Alarm.swift），它会**遮蔽** AlarmKit 的同名类型 ——
+/// 直接写 `Alarm.Schedule` 会被解析成 `DanceAlarm.Alarm`，编译器报：
+///   "'Schedule' is not a member type of struct 'DanceAlarm.Alarm'"
+/// 所以凡是要引用系统闹钟类型的地方，必须走 `AlarmKit.Alarm` 全限定名。这里起个别名减少噪音。
+private typealias SystemAlarm = AlarmKit.Alarm
+
 /// 传给闹钟的附加数据。AlarmMetadata 要求 Decodable / Encodable / Hashable / Sendable，
 /// 由编译器自动合成。
 struct DanceAlarmMetadata: AlarmMetadata {
@@ -20,7 +26,13 @@ struct DanceAlarmMetadata: AlarmMetadata {
 ///
 /// 关键点 `openAppWhenRun = true`：让「停止」直接把 App 拉起来进跳舞界面。
 /// 否则用户一按停止就完事了，跳舞这一关形同虚设 —— 这是 AlarmKit 上最容易漏掉的一环。
-struct OpenDanceIntent: AppIntent {
+/// 必须实现 `LiveActivityIntent` 而**不是**普通的 `AppIntent`：
+/// AlarmKit 的 `stopIntent` 形参要求类型符合 `LiveActivityIntent`，
+/// 用 AppIntent 会报 "argument type 'OpenDanceIntent' does not conform to
+/// expected type 'LiveActivityIntent'"。
+/// 另外 `LiveActivityIntent.perform()` 本身是 `@MainActor` 隔离的，不必再手动派发。
+@available(iOS 26.0, *)
+struct OpenDanceIntent: LiveActivityIntent {
 
     static let title: LocalizedStringResource = "起来跳舞"
     static let description = IntentDescription("打开跳舞闹钟，跳满设定秒数才能关闭")
@@ -37,12 +49,10 @@ struct OpenDanceIntent: AppIntent {
         self.alarmID = alarmID
     }
 
+    @MainActor
     func perform() async throws -> some IntentResult {
-        let id = alarmID
-        await MainActor.run {
-            if let uuid = UUID(uuidString: id) {
-                RingCoordinator.shared.begin(alarmID: uuid)
-            }
+        if let uuid = UUID(uuidString: alarmID) {
+            RingCoordinator.shared.begin(alarmID: uuid)
         }
         return .result()
     }
@@ -91,11 +101,11 @@ final class AlarmKitBackend: AlarmBackend {
     // MARK: - 排程
 
     func schedule(_ alarm: Alarm) async throws {
-        let time = Alarm.Schedule.Relative.Time(hour: alarm.hour, minute: alarm.minute)
-        let recurrence: Alarm.Schedule.Relative.Recurrence =
+        let time = SystemAlarm.Schedule.Relative.Time(hour: alarm.hour, minute: alarm.minute)
+        let recurrence: SystemAlarm.Schedule.Relative.Recurrence =
             alarm.repeatDays.isEmpty ? .never : .weekly(alarm.localeWeekdays)
-        let schedule = Alarm.Schedule.relative(
-            Alarm.Schedule.Relative(time: time, repeats: recurrence)
+        let schedule = SystemAlarm.Schedule.relative(
+            SystemAlarm.Schedule.Relative(time: time, repeats: recurrence)
         )
 
         try await manager.schedule(
@@ -149,12 +159,18 @@ final class AlarmKitBackend: AlarmBackend {
 
     private func configuration(
         for alarm: Alarm,
-        schedule: Alarm.Schedule
+        schedule: SystemAlarm.Schedule
     ) -> AlarmManager.AlarmConfiguration<DanceAlarmMetadata> {
 
+        // AlarmButton 没有 `.stopButton` 这类预设成员（这是最初编译失败的报错点），
+        // 只能按官方签名自己构造：init(text:textColor:systemImageName:)
         let alert = AlarmPresentation.Alert(
             title: LocalizedStringResource(stringLiteral: alarm.label.isEmpty ? "起床跳舞" : alarm.label),
-            stopButton: .stopButton
+            stopButton: AlarmButton(
+                text: "起来跳舞",
+                textColor: .white,
+                systemImageName: "figure.dance"
+            )
         )
 
         let attributes = AlarmAttributes(
